@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { instantAnalysis } from "@/lib/assessment.functions";
+import { instantAnalysis, finalReport } from "@/lib/assessment.functions";
 import { UploadStep } from "@/components/assessment/UploadStep";
 import { InstantResults } from "@/components/assessment/InstantResults";
 import { ChatAssessment } from "@/components/assessment/ChatAssessment";
@@ -25,6 +25,7 @@ function Index() {
   const [loading, setLoading] = useState(false);
 
   const runInstant = useServerFn(instantAnalysis);
+  const runFinal = useServerFn(finalReport);
 
   async function handleUpload(jdText: string, resumeText: string) {
     setLoading(true);
@@ -52,8 +53,7 @@ function Index() {
     if (!analysis) return;
     setLoading(true);
     try {
-      const { finalReport } = await import("@/lib/assessment.functions");
-      const r = (await finalReport({
+      const r = (await runFinal({
         data: { jobDescription: jd, resume, analysis, history: [] },
       })) as FinalReport;
       setReport(r);
