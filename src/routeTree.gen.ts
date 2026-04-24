@@ -10,89 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiParseResumeRouteImport } from './routes/api.parse-resume'
-import { Route as ApiNextQuestionRouteImport } from './routes/api.next-question'
-import { Route as ApiInstantAnalysisRouteImport } from './routes/api.instant-analysis'
-import { Route as ApiFinalReportRouteImport } from './routes/api.final-report'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiParseResumeRoute = ApiParseResumeRouteImport.update({
-  id: '/api/parse-resume',
-  path: '/api/parse-resume',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiNextQuestionRoute = ApiNextQuestionRouteImport.update({
-  id: '/api/next-question',
-  path: '/api/next-question',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiInstantAnalysisRoute = ApiInstantAnalysisRouteImport.update({
-  id: '/api/instant-analysis',
-  path: '/api/instant-analysis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiFinalReportRoute = ApiFinalReportRouteImport.update({
-  id: '/api/final-report',
-  path: '/api/final-report',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/final-report': typeof ApiFinalReportRoute
-  '/api/instant-analysis': typeof ApiInstantAnalysisRoute
-  '/api/next-question': typeof ApiNextQuestionRoute
-  '/api/parse-resume': typeof ApiParseResumeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/final-report': typeof ApiFinalReportRoute
-  '/api/instant-analysis': typeof ApiInstantAnalysisRoute
-  '/api/next-question': typeof ApiNextQuestionRoute
-  '/api/parse-resume': typeof ApiParseResumeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/final-report': typeof ApiFinalReportRoute
-  '/api/instant-analysis': typeof ApiInstantAnalysisRoute
-  '/api/next-question': typeof ApiNextQuestionRoute
-  '/api/parse-resume': typeof ApiParseResumeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/api/final-report'
-    | '/api/instant-analysis'
-    | '/api/next-question'
-    | '/api/parse-resume'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/api/final-report'
-    | '/api/instant-analysis'
-    | '/api/next-question'
-    | '/api/parse-resume'
-  id:
-    | '__root__'
-    | '/'
-    | '/api/final-report'
-    | '/api/instant-analysis'
-    | '/api/next-question'
-    | '/api/parse-resume'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiFinalReportRoute: typeof ApiFinalReportRoute
-  ApiInstantAnalysisRoute: typeof ApiInstantAnalysisRoute
-  ApiNextQuestionRoute: typeof ApiNextQuestionRoute
-  ApiParseResumeRoute: typeof ApiParseResumeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -104,44 +48,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/parse-resume': {
-      id: '/api/parse-resume'
-      path: '/api/parse-resume'
-      fullPath: '/api/parse-resume'
-      preLoaderRoute: typeof ApiParseResumeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/next-question': {
-      id: '/api/next-question'
-      path: '/api/next-question'
-      fullPath: '/api/next-question'
-      preLoaderRoute: typeof ApiNextQuestionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/instant-analysis': {
-      id: '/api/instant-analysis'
-      path: '/api/instant-analysis'
-      fullPath: '/api/instant-analysis'
-      preLoaderRoute: typeof ApiInstantAnalysisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/final-report': {
-      id: '/api/final-report'
-      path: '/api/final-report'
-      fullPath: '/api/final-report'
-      preLoaderRoute: typeof ApiFinalReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiFinalReportRoute: ApiFinalReportRoute,
-  ApiInstantAnalysisRoute: ApiInstantAnalysisRoute,
-  ApiNextQuestionRoute: ApiNextQuestionRoute,
-  ApiParseResumeRoute: ApiParseResumeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
