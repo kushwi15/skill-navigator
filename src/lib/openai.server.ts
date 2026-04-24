@@ -7,7 +7,7 @@ export interface ChatMessage {
   content: string;
 }
 
-export async function callOpenAIJSON<T extends Record<string, unknown> = Record<string, unknown>>(opts: {
+export async function callOpenAIJSON<T extends Record<string, any> = Record<string, any>>(opts: {
   messages: ChatMessage[];
   model?: string;
   temperature?: number;
