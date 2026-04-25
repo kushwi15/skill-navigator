@@ -1,6 +1,9 @@
-// Server-only helpers for calling OpenAI. Never import from client code.
+// Server-only helpers for calling Google Gemini. Never import from client code.
+// File name kept as `openai.server.ts` to avoid touching imports across the app.
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_URL = (model: string, apiKey: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -12,37 +15,58 @@ export async function callOpenAIJSON<T extends Record<string, any> = Record<stri
   model?: string;
   temperature?: number;
 }): Promise<T> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
+    throw new Error("GEMINI_API_KEY is not configured.");
   }
 
-  const res = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: opts.model ?? "gpt-4o-mini",
-      messages: opts.messages,
+  // Translate OpenAI-style messages to Gemini format.
+  const systemParts = opts.messages
+    .filter((m) => m.role === "system")
+    .map((m) => m.content)
+    .join("\n\n");
+
+  const contents = opts.messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+  const body: Record<string, any> = {
+    contents,
+    generationConfig: {
       temperature: opts.temperature ?? 0.3,
-      response_format: { type: "json_object" },
-    }),
+      responseMimeType: "application/json",
+    },
+  };
+  if (systemParts) {
+    body.systemInstruction = { role: "system", parts: [{ text: systemParts }] };
+  }
+
+  const model = opts.model ?? GEMINI_MODEL;
+  const res = await fetch(GEMINI_URL(model, apiKey), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    if (res.status === 429) throw new Error("Rate limited by OpenAI. Please try again shortly.");
-    if (res.status === 401) throw new Error("Invalid OpenAI API key.");
-    throw new Error(`OpenAI error ${res.status}: ${text.slice(0, 300)}`);
+    if (res.status === 429) throw new Error("Rate limited by Gemini. Please try again shortly.");
+    if (res.status === 401 || res.status === 403) throw new Error("Invalid Gemini API key.");
+    throw new Error(`Gemini error ${res.status}: ${text.slice(0, 300)}`);
   }
 
   const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Empty response from OpenAI");
+  const content =
+    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") ?? "";
+  if (!content) throw new Error("Empty response from Gemini");
+
+  // Gemini sometimes wraps JSON in code fences despite responseMimeType.
+  const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   try {
-    return JSON.parse(content) as T;
+    return JSON.parse(cleaned) as T;
   } catch {
     throw new Error("Failed to parse JSON response from model");
   }
