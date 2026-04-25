@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { instantAnalysis, finalReport } from "@/lib/assessment.functions";
+import { localInstantAnalysis, localFinalReport } from "@/lib/local-ai";
 import { UploadStep } from "@/components/assessment/UploadStep";
 import { InstantResults } from "@/components/assessment/InstantResults";
 import { ChatAssessment } from "@/components/assessment/ChatAssessment";
 import { FinalReportView } from "@/components/assessment/FinalReportView";
-import { Sparkles, Brain } from "lucide-react";
+import { Sparkles, Brain, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { InstantAnalysis, FinalReport, QAExchange } from "@/lib/types";
 import { hashString } from "@/lib/utils";
@@ -25,8 +25,8 @@ function Index() {
   const [report, setReport] = useState<FinalReport | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const runInstant = useServerFn(instantAnalysis);
-  const runFinal = useServerFn(finalReport);
+  const runInstant = localInstantAnalysis;
+  const runFinal = localFinalReport;
 
   async function handleUpload(jdText: string, resumeText: string) {
     setLoading(true);
@@ -51,9 +51,7 @@ function Index() {
     }
 
     try {
-      const res = (await runInstant({
-        data: { jobDescription: jdText, resume: resumeText },
-      })) as InstantAnalysis;
+      const res = await runInstant(jdText, resumeText);
       setAnalysis(res);
       localStorage.setItem(cacheKey, JSON.stringify(res));
       setStep("instant");
@@ -73,9 +71,7 @@ function Index() {
     if (!analysis) return;
     setLoading(true);
     try {
-      const r = (await runFinal({
-        data: { jobDescription: jd, resume, analysis, history: [] },
-      })) as FinalReport;
+      const r = await runFinal(jd, resume, analysis, []);
       setReport(r);
       setStep("report");
     } catch (e) {
@@ -133,10 +129,15 @@ function Index() {
 
         {step === "instant" && analysis && (
           <>
-            <SectionHeader
-              title="Initial Analysis"
-              subtitle="Resume vs job description. Skills are unverified until validated through chat."
-            />
+            <div className="flex items-center justify-between">
+              <SectionHeader
+                title="Initial Analysis"
+                subtitle="Resume vs job description. Skills are unverified until validated through chat."
+              />
+              <Button variant="ghost" size="sm" onClick={() => setStep("upload")} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Back to Upload
+              </Button>
+            </div>
             <InstantResults
               analysis={analysis}
               onStartChat={() => setStep("chat")}
@@ -148,10 +149,15 @@ function Index() {
 
         {step === "chat" && analysis && (
           <>
-            <SectionHeader
-              title="Adaptive Skill Assessment"
-              subtitle="Answer concretely. The agent will adapt difficulty and stop when it has enough signal."
-            />
+            <div className="flex items-center justify-between">
+              <SectionHeader
+                title="Adaptive Skill Assessment"
+                subtitle="Answer concretely. The agent will adapt difficulty and stop when it has enough signal."
+              />
+              <Button variant="ghost" size="sm" onClick={() => setStep("instant")} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Back to Analysis
+              </Button>
+            </div>
             <ChatAssessment
               jobDescription={jd}
               resume={resume}

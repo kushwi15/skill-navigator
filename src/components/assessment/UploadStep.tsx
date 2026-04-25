@@ -23,13 +23,45 @@ export function UploadStep({ onSubmit, loading }: Props) {
 
   async function handleFile(file: File) {
     setParsing(true);
+    const name = file.name.toLowerCase();
+    
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await parseFn({ data: fd });
-      setResume(res.text);
-      setFilename(file.name);
-      toast.success(`Parsed ${file.name}`);
+      if (name.endsWith(".pdf")) {
+        // Load PDF.js only when needed in the browser
+        const pdfjs = await import("pdfjs-dist");
+        // Use the local bundled worker instead of a CDN
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.mjs",
+          import.meta.url
+        ).toString();
+
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjs.getDocument({ 
+          data: arrayBuffer,
+          verbosity: 0 // Silence font warnings (TT: undefined function: 32)
+        });
+        const pdf = await loadingTask.promise;
+        let fullText = "";
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map((item: any) => item.str);
+          fullText += strings.join(" ") + "\n";
+        }
+        
+        setResume(fullText.trim());
+        setFilename(file.name);
+        toast.success(`Extracted text from ${file.name}`);
+      } else {
+        // Fallback to server for other types
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await parseFn({ data: fd });
+        setResume(res.text);
+        setFilename(file.name);
+        toast.success(`Parsed ${file.name}`);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
     } finally {

@@ -54,4 +54,5 @@ export interface FinalReport {
     project_suggestion: string;
   }>;
   overall_summary: string;
+  roadmap_graph?: string;
 }

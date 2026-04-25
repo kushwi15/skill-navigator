@@ -10,6 +10,39 @@ interface Props {
   onRestart: () => void;
 }
 
+import { useEffect, useRef } from "react";
+import mermaid from "mermaid";
+
+mermaid.initialize({
+  startOnLoad: true,
+  theme: "base",
+  themeVariables: {
+    primaryColor: "#3b82f6",
+    primaryTextColor: "#fff",
+    primaryBorderColor: "#2563eb",
+    lineColor: "#64748b",
+    secondaryColor: "#10b981",
+    tertiaryColor: "#f59e0b",
+  }
+});
+
+function RoadmapGraph({ definition }: { definition: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.removeAttribute("data-processed");
+      mermaid.contentLoaded();
+    }
+  }, [definition]);
+
+  return (
+    <div className="mermaid w-full overflow-x-auto rounded-xl border border-border bg-background/50 p-6 shadow-inner" ref={containerRef}>
+      {definition}
+    </div>
+  );
+}
+
 function levelColor(level: string) {
   switch (level) {
     case "Advanced":
@@ -82,6 +115,20 @@ export function FinalReportView({ report, onRestart }: Props) {
           </div>
         </div>
       </Card>
+
+      {/* Visual Roadmap */}
+      {report.roadmap_graph && (
+        <Card className="p-6 shadow-soft">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Visual Skill Roadmap</h3>
+          </div>
+          <RoadmapGraph definition={report.roadmap_graph} />
+          <p className="mt-3 text-center text-[10px] text-muted-foreground uppercase tracking-widest">
+            blue: current · green: verified · orange: path
+          </p>
+        </Card>
+      )}
 
       {/* Skill assessment */}
       <Card className="p-6 shadow-soft">
