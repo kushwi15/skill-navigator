@@ -45,31 +45,44 @@ export async function callOpenAIJSON<T extends Record<string, any> = Record<stri
   }
 
   const model = opts.model ?? GEMINI_MODEL;
-  const res = await fetch(GEMINI_URL(model, apiKey), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  if (!res.ok) {
+  while (attempts < maxAttempts) {
+    const res = await fetch(GEMINI_URL(model, apiKey), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const content =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") ?? "";
+      if (!content) throw new Error("Empty response from Gemini");
+
+      const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+      try {
+        return JSON.parse(cleaned) as T;
+      } catch {
+        throw new Error("Failed to parse JSON response from model");
+      }
+    }
+
+    if (res.status === 429 && attempts < maxAttempts - 1) {
+      attempts++;
+      const delay = Math.pow(2, attempts) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      continue;
+    }
+
     const text = await res.text();
-    if (res.status === 429) throw new Error("Rate limited by Gemini. Please try again shortly.");
+    if (res.status === 429) throw new Error("Rate limited by Gemini. Please try again in a minute.");
     if (res.status === 401 || res.status === 403) throw new Error("Invalid Gemini API key.");
     throw new Error(`Gemini error ${res.status}: ${text.slice(0, 300)}`);
   }
 
-  const data = await res.json();
-  const content =
-    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") ?? "";
-  if (!content) throw new Error("Empty response from Gemini");
-
-  // Gemini sometimes wraps JSON in code fences despite responseMimeType.
-  const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-  try {
-    return JSON.parse(cleaned) as T;
-  } catch {
-    throw new Error("Failed to parse JSON response from model");
-  }
+  throw new Error("Maximum retry attempts reached");
 }
 
 export const SYSTEM_PROMPT = `You are an AI Skill Assessment and Learning Plan Agent designed for production use.
