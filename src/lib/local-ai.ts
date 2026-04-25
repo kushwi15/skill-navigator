@@ -234,3 +234,210 @@ export async function localFinalReport(jd: string, resume: string, analysis: Ins
     roadmap_graph: graph
   };
 }
+
+// ─── REALISTIC RESUME ENHANCEMENT ENGINE ────────────────────────────────────
+
+const SKILL_POOL: Record<string, string[]> = {
+  React: [
+    "Architected a React component library of 40+ reusable components, cutting UI build time by 35% across 3 product teams.",
+    "Reduced First Contentful Paint by 1.8s by introducing React.lazy, Suspense boundaries, and route-level code splitting.",
+    "Led migration of a 60k-line Angular codebase to React 18, completing on schedule with zero downtime.",
+  ],
+  TypeScript: [
+    "Introduced TypeScript strict mode across a 50k-line JavaScript monorepo, eliminating an entire class of null-reference bugs.",
+    "Authored shared type definitions consumed by 6 microservices, reducing cross-team API integration errors by ~60%.",
+    "Designed generic utility types and custom ESLint rules that enforced consistent patterns across a distributed engineering team.",
+  ],
+  "Node.js": [
+    "Built a Node.js microservice handling 15k requests/min with p99 latency under 80ms using cluster mode and connection pooling.",
+    "Developed a real-time notification engine using Node.js + WebSockets, serving 8k concurrent users with <100ms delivery.",
+    "Refactored a monolithic Express app into 5 independent Node.js services, improving deploy frequency from monthly to daily.",
+  ],
+  Python: [
+    "Wrote Python ETL pipelines processing 2M records nightly, reducing manual reporting effort by 12 hours/week.",
+    "Built a FastAPI service with async endpoints serving 500 RPS, replacing a legacy Flask monolith with 3x throughput improvement.",
+    "Developed ML data-preprocessing scripts in Python (Pandas, NumPy) that cut model training time from 4 hours to 45 minutes.",
+  ],
+  Docker: [
+    "Containerised 12 microservices with Docker, standardising environments and eliminating 90% of 'works on my machine' incidents.",
+    "Authored multi-stage Dockerfiles that reduced production image sizes by an average of 65%, speeding up CI pull times.",
+    "Designed a Docker Compose dev stack replicating the full production topology, onboarding new engineers in under 2 hours.",
+  ],
+  AWS: [
+    "Architected a serverless data pipeline on AWS (Lambda + S3 + Glue) processing 500GB/day at 40% lower cost than EC2.",
+    "Managed production infrastructure across 3 AWS regions with 99.97% uptime, using Route 53 failover and multi-AZ RDS.",
+    "Reduced monthly AWS spend by $8k by rightsizing EC2 instances and enabling S3 Intelligent-Tiering.",
+  ],
+  PostgreSQL: [
+    "Redesigned a high-traffic PostgreSQL schema (10M rows), adding partial indexes that cut query time by 80%.",
+    "Implemented row-level security and audit logging in PostgreSQL, achieving SOC 2 compliance for a fintech product.",
+    "Migrated 40GB MySQL database to PostgreSQL with zero downtime using logical replication and blue-green cutover.",
+  ],
+  GraphQL: [
+    "Replaced 30 REST endpoints with a unified GraphQL schema, reducing average payload size by 55% and client round-trips by 70%.",
+    "Implemented DataLoader-based batching in a GraphQL API, cutting database queries per request from 40 to 4.",
+  ],
+  Kubernetes: [
+    "Migrated 20 services to Kubernetes (EKS), reducing infrastructure costs by 30% while improving deployment reliability.",
+    "Implemented HPA and custom metrics-based autoscaling, handling 10x traffic spikes during product launches.",
+  ],
+  "Next.js": [
+    "Built a Next.js storefront with ISR achieving Core Web Vitals green scores and a 40% increase in organic search traffic.",
+    "Implemented Next.js edge middleware for A/B testing and geo-based content personalisation with <5ms overhead.",
+  ],
+};
+
+function seedPick<T>(arr: T[], seed: string): T {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  return arr[Math.abs(h) % arr.length];
+}
+
+function getRealisticBullet(skill: string, seed: string): string {
+  const pool = SKILL_POOL[skill] ?? Object.values(SKILL_POOL).find((_, i) => 
+    Object.keys(SKILL_POOL)[i].toLowerCase().includes(skill.toLowerCase())
+  );
+  if (pool) return seedPick(pool, seed + skill);
+  return `Delivered measurable impact using ${skill} in a production environment, collaborating with cross-functional teams to meet business objectives.`;
+}
+
+function detectYearsOfExperience(resume: string): number | null {
+  const matches = resume.match(/20\d{2}/g);
+  if (!matches || matches.length < 2) return null;
+  const years = matches.map(Number);
+  const minYear = Math.min(...years);
+  const maxYear = Math.max(...years);
+  const span = maxYear - minYear;
+  return span >= 1 && span <= 30 ? span : null;
+}
+
+function extractJobTitle(jd: string): string {
+  const lines = jd.split("\n").slice(0, 6).map(l => l.trim()).filter(Boolean);
+  const titleLine = lines.find(l => 
+    /engineer|developer|architect|manager|lead|analyst|scientist|designer|consultant|specialist/i.test(l) && l.length < 80
+  );
+  return titleLine ?? "Software Professional";
+}
+
+function extractSection(text: string, keywords: string[]): string {
+  const lines = text.split("\n");
+  let on = false;
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (keywords.some(k => t.toUpperCase().includes(k))) on = true;
+    if (on) {
+      if (!t && out.length > 2) break;
+      if (t) out.push(t);
+    }
+  }
+  return out.slice(1).join("\n");
+}
+
+export function localEnhanceResume(jd: string, resume: string, analysis: InstantAnalysis): string {
+  const HR = "─".repeat(64);
+  const jobTitle = extractJobTitle(jd);
+  const have = analysis.skills_identified;
+  const gaps = analysis.skill_gaps;
+  const required = analysis.skills_required;
+  const yoe = detectYearsOfExperience(resume);
+  const seed = resume.slice(0, 80);
+
+  const name = resume.split("\n").map(l => l.trim()).find(l => l.length > 1 && l.length < 55) ?? "Candidate";
+
+  const contacts = resume.split("\n").map(l => l.trim())
+    .filter(l => /@/.test(l) || /\+?\d[\d\s\-]{8,}/.test(l) || /linkedin\.com|github\.com/i.test(l))
+    .slice(0, 3);
+
+  const out: string[] = [];
+
+  // HEADER
+  out.push(name.toUpperCase());
+  out.push(jobTitle);
+  if (contacts.length) out.push(contacts.join("  |  "));
+  out.push("");
+
+  // PROFESSIONAL SUMMARY
+  out.push("PROFESSIONAL SUMMARY");
+  out.push(HR);
+  const expPhrase = yoe ? `${yoe}+ years of experience` : "a strong background";
+  const topHave = have.slice(0, 4).join(", ") || "software engineering";
+  const gapNote = gaps.length > 0 
+    ? ` Currently upskilling in ${gaps.slice(0, 2).join(" and ")} to close the remaining gap for this role.`
+    : " Fully aligned with the required technology stack for this position.";
+  out.push(
+    `${jobTitle} with ${expPhrase} in designing and delivering production-grade software. ` +
+    `Core proficiencies include ${topHave}. ` +
+    `Proven track record of shipping reliable systems, collaborating across teams, and driving measurable technical improvements.` +
+    gapNote
+  );
+  out.push("");
+
+  // TECHNICAL SKILLS
+  out.push("TECHNICAL SKILLS");
+  out.push(HR);
+  
+  const langSkills   = have.filter(s => ["JavaScript","TypeScript","Python","Java","Go","Rust","Ruby","PHP","Swift","Kotlin","C++","C#"].includes(s));
+  const frontSkills  = have.filter(s => ["React","Next.js","Vue","Angular","Tailwind"].includes(s));
+  const backSkills   = have.filter(s => ["Node.js","Express","Django","FastAPI"].includes(s));
+  const devopsSkills = have.filter(s => ["AWS","GCP","Docker","Kubernetes","CI/CD"].includes(s));
+  const otherSkills  = have.filter(s => !langSkills.includes(s) && !frontSkills.includes(s) && !backSkills.includes(s) && !devopsSkills.includes(s));
+
+  if (langSkills.length)   out.push(`Languages:          ${langSkills.join(", ")}`);
+  if (frontSkills.length)  out.push(`Frontend:           ${frontSkills.length > 5 ? frontSkills.slice(0, 5).join(", ") + "..." : frontSkills.join(", ")}`);
+  if (backSkills.length)   out.push(`Backend:            ${backSkills.join(", ")}`);
+  if (devopsSkills.length) out.push(`Cloud / DevOps:     ${devopsSkills.join(", ")}`);
+  if (otherSkills.length)  out.push(`Other:              ${otherSkills.slice(0, 6).join(", ")}`);
+  if (gaps.length)         out.push(`Actively Learning:  ${gaps.join(", ")}`);
+  out.push("");
+
+  // PROFESSIONAL EXPERIENCE
+  const expText = extractSection(resume, ["EXPERIENCE", "EMPLOYMENT", "WORK HISTORY"]);
+  if (expText.length > 20) {
+    out.push("PROFESSIONAL EXPERIENCE");
+    out.push(HR);
+    out.push(expText);
+    out.push("");
+  }
+
+  // IMPACT HIGHLIGHTS
+  out.push("IMPACT HIGHLIGHTS (JD-TARGETED)");
+  out.push(HR);
+  const matchedSkills = required.filter(s => have.map(h => h.toUpperCase()).includes(s.toUpperCase())).slice(0, 5);
+  if (matchedSkills.length === 0) {
+    out.push("• Consistently delivered projects on time while adapting quickly to new technical environments.");
+    out.push("• Collaborated with product teams to translate business requirements into engineering solutions.");
+  } else {
+    matchedSkills.forEach(skill => {
+      out.push(`• ${getRealisticBullet(skill, seed)}`);
+    });
+  }
+  out.push("");
+
+  // EDUCATION
+  const edu = extractSection(resume, ["EDUCATION", "DEGREE", "UNIVERSITY", "COLLEGE", "B.TECH", "BACHELOR", "MASTER"]);
+  if (edu.length > 5) {
+    out.push("EDUCATION");
+    out.push(HR);
+    out.push(edu);
+    out.push("");
+  }
+
+  // DEVELOPMENT ROADMAP
+  if (gaps.length > 0) {
+    out.push("PROFESSIONAL DEVELOPMENT ROADMAP");
+    out.push(HR);
+    out.push(`Target outcomes for currently developing skills:`);
+    out.push("");
+    gaps.slice(0, 3).forEach((skill, i) => {
+      const bullet = getRealisticBullet(skill, seed + i);
+      out.push(`  ${skill}: ${bullet}`);
+    });
+    out.push("");
+  }
+
+  out.push(HR);
+  out.push(`Enhanced by Skill Navigator · ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}`);
+
+  return out.join("\n");
+}
