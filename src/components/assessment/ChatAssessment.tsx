@@ -7,7 +7,6 @@ import { Loader2, Send, Sparkles, FileCheck } from "lucide-react";
 import { toast } from "sonner";
 import type { QAExchange, FinalReport, InstantAnalysis } from "@/lib/types";
 import { localNextQuestion, localFinalReport, localVerifyAnswer } from "@/lib/local-ai";
-import { useServerFn } from "@tanstack/react-start";
 import { searchQuestions } from "@/lib/assessment.functions";
 
 interface CurrentQ {
@@ -53,7 +52,7 @@ export function ChatAssessment({ jobDescription, resume, analysis, onComplete }:
 
   const askNext = localNextQuestion;
   const finalize = localFinalReport;
-  const runSearch = useServerFn(searchQuestions);
+  const runSearch = searchQuestions;
   
   // Cache for web questions per skill to avoid repeated searches
   const [webQuestionsCache, setWebQuestionsCache] = useState<Record<string, string[]>>({});
@@ -76,7 +75,7 @@ export function ChatAssessment({ jobDescription, resume, analysis, onComplete }:
       if (webQs.length === 0) {
         setSearching(true);
         try {
-          const searchRes = await runSearch({ data: { skill } });
+          const searchRes = await runSearch({ skill });
           webQs = searchRes as string[];
           setWebQuestionsCache(prev => ({ ...prev, [skill]: webQs }));
         } catch (err) {

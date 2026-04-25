@@ -141,6 +141,8 @@ function Index() {
             </div>
             <InstantResults
               analysis={analysis}
+              jd={jd}
+              resume={resume}
               onStartChat={() => setStep("chat")}
               onSkipToReport={skipToReport}
               loading={loading}

@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
 import type { InstantAnalysis } from "@/lib/types";
 
+import { ResumeEnhancer } from "./ResumeEnhancer";
+
 interface Props {
   analysis: InstantAnalysis;
+  jd: string;
+  resume: string;
   onStartChat: () => void;
   onSkipToReport: () => void;
   loading?: boolean;
@@ -24,50 +28,58 @@ function levelColor(level: string) {
   }
 }
 
-export function InstantResults({ analysis, onStartChat, onSkipToReport, loading }: Props) {
+export function InstantResults({ analysis, jd, resume, onStartChat, onSkipToReport, loading }: Props) {
   return (
     <div className="space-y-6">
-      <Card className="p-6 shadow-soft">
-        <h3 className="mb-2 text-lg font-semibold">Initial Read</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {analysis.overall_summary}
-        </p>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="p-6 shadow-soft">
+            <h3 className="mb-2 text-lg font-semibold">Initial Read</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {analysis.overall_summary}
+            </p>
+          </Card>
+          
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="p-6 shadow-soft">
+              <div className="mb-3 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <h3 className="font-semibold">Skills Identified</h3>
+                <Badge variant="secondary">{analysis.skills_identified.length}</Badge>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.skills_identified.map((s) => (
+                  <Badge key={s} variant="outline" className="border-success/30 bg-success/10 text-success">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="p-6 shadow-soft">
-          <div className="mb-3 flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            <h3 className="font-semibold">Skills Identified</h3>
-            <Badge variant="secondary">{analysis.skills_identified.length}</Badge>
+            <Card className="p-6 shadow-soft">
+              <div className="mb-3 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-warning" />
+                <h3 className="font-semibold">Skill Gaps</h3>
+                <Badge variant="secondary">{analysis.skill_gaps.length}</Badge>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.skill_gaps.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">No major gaps detected.</span>
+                ) : (
+                  analysis.skill_gaps.map((s) => (
+                    <Badge key={s} variant="outline" className="border-warning/30 bg-warning/15 text-foreground">
+                      {s}
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </Card>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {analysis.skills_identified.map((s) => (
-              <Badge key={s} variant="outline" className="border-success/30 bg-success/10 text-success">
-                {s}
-              </Badge>
-            ))}
-          </div>
-        </Card>
+        </div>
 
-        <Card className="p-6 shadow-soft">
-          <div className="mb-3 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-warning" />
-            <h3 className="font-semibold">Skill Gaps</h3>
-            <Badge variant="secondary">{analysis.skill_gaps.length}</Badge>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {analysis.skill_gaps.length === 0 ? (
-              <span className="text-sm text-muted-foreground">No major gaps detected.</span>
-            ) : (
-              analysis.skill_gaps.map((s) => (
-                <Badge key={s} variant="outline" className="border-warning/30 bg-warning/15 text-foreground">
-                  {s}
-                </Badge>
-              ))
-            )}
-          </div>
-        </Card>
+        <div className="lg:col-span-1">
+          <ResumeEnhancer jd={jd} resume={resume} analysis={analysis} />
+        </div>
       </div>
 
       <Card className="p-6 shadow-soft">
