@@ -9,6 +9,7 @@ import { FinalReportView } from "@/components/assessment/FinalReportView";
 import { Sparkles, Brain } from "lucide-react";
 import { toast } from "sonner";
 import type { InstantAnalysis, FinalReport, QAExchange } from "@/lib/types";
+import { hashString } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -31,11 +32,30 @@ function Index() {
     setLoading(true);
     setJd(jdText);
     setResume(resumeText);
+
+    // Caching logic
+    const cacheKey = `analysis_${hashString(jdText + resumeText)}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as InstantAnalysis;
+        setAnalysis(parsed);
+        setStep("instant");
+        setLoading(false);
+        toast.success("Loaded from cache");
+        return;
+      } catch (e) {
+        localStorage.removeItem(cacheKey);
+      }
+    }
+
     try {
       const res = (await runInstant({
         data: { jobDescription: jdText, resume: resumeText },
       })) as InstantAnalysis;
       setAnalysis(res);
+      localStorage.setItem(cacheKey, JSON.stringify(res));
       setStep("instant");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Analysis failed");

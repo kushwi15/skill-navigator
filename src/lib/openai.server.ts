@@ -15,7 +15,7 @@ export async function callOpenAIJSON<T extends Record<string, any> = Record<stri
   model?: string;
   temperature?: number;
 }): Promise<T> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
