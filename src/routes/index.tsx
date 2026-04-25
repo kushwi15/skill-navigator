@@ -99,7 +99,7 @@ function Index() {
             <div>
               <div className="font-bold tracking-tight">Skill Navigator</div>
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Skills Navigation AI Agent
+                Sills Navigation AI Agent
               </div>
             </div>
           </div>

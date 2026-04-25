@@ -1,5 +1,8 @@
 {
-  "version": 2,
-  "outputDirectory": ".vercel/output",
-  "framework": null
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
