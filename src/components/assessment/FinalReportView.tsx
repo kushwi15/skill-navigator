@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Download, RotateCcw, ExternalLink, Trophy, Target, BookOpen } from "lucide-react";
+import { Download, RotateCcw, ExternalLink, Trophy, Target, BookOpen, Sparkles } from "lucide-react";
 import type { FinalReport } from "@/lib/types";
 
 interface Props {

@@ -1,56 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-// @ts-expect-error - Internal path needed for ESM compatibility
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
-import mammoth from "mammoth";
 import { 
   localInstantAnalysis, 
   localNextQuestion, 
   localFinalReport 
 } from "@/lib/local-ai";
 import type { InstantAnalysis, QAExchange } from "@/lib/types";
-
-// ---------- parseResume ----------
-export const parseResume = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => {
-    if (!(input instanceof FormData)) throw new Error("Expected FormData");
-    const file = input.get("file");
-    if (!(file instanceof File)) throw new Error("No file provided");
-    if (file.size > 10 * 1024 * 1024) throw new Error("File too large (max 10MB)");
-    return { file };
-  })
-  .handler(async ({ data }) => {
-    const { file } = data;
-    const name = file.name.toLowerCase();
-    const arrayBuffer = await file.arrayBuffer();
-    const buf = Buffer.from(arrayBuffer);
-    let text = "";
-
-    try {
-      console.log("Parsing file:", name, "type:", file.type, "size:", file.size);
-      if (name.endsWith(".pdf") || file.type === "application/pdf") {
-        console.log("Attempting PDF parse...");
-        const pdfData = await pdfParse(buf);
-        text = pdfData.text;
-        console.log("PDF parse successful, extracted", text.length, "chars");
-      } else if (name.endsWith(".docx")) {
-        console.log("Attempting DOCX parse...");
-        const result = await mammoth.extractRawText({ buffer: buf });
-        text = result.value;
-      } else if (name.endsWith(".txt") || file.type === "text/plain") {
-        text = new TextDecoder().decode(buf);
-      } else {
-        throw new Error(`Unsupported file type: ${name} (${file.type}). Use PDF, DOCX, or TXT.`);
-      }
-    } catch (e) {
-      console.error("DETAILED PARSE ERROR:", e);
-      throw new Error(`Parse failed: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    text = text.replace(/\s+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-    if (text.length < 30) throw new Error("Could not extract meaningful text from file.");
-    return { text };
-  });
 
 // Helper to simulate thinking time
 const think = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

@@ -30,10 +30,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "SkillScope — AI Skill Assessment & Learning Plan" },
+      { title: "Skill Navigator — AI Skill Assessment & Learning Plan" },
       { name: "description", content: "Upload your resume and a job description. Get an honest, adaptive AI skill assessment plus a personalized learning roadmap with real resources." },
-      { name: "author", content: "SkillScope" },
-      { property: "og:title", content: "SkillScope — AI Skill Assessment Agent" },
+      { name: "author", content: "Skill Navigator" },
+      { property: "og:title", content: "Skill Navigator — AI Skill Assessment Agent" },
       { property: "og:description", content: "Adaptive skill validation, gap analysis, and a realistic learning plan — powered by AI." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

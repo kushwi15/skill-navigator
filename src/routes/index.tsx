@@ -97,9 +97,9 @@ function Index() {
               <Brain className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <div className="font-bold tracking-tight">SkillScope</div>
+              <div className="font-bold tracking-tight">Skill Navigator</div>
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                AI Assessment Agent
+                Sills Navigation AI Agent
               </div>
             </div>
           </div>
@@ -119,8 +119,9 @@ function Index() {
                 Know exactly <span className="text-gradient">where you stand</span> for any role.
               </h1>
               <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                Paste a job description and upload your resume. SkillScope extracts required skills,
-                validates your level through an adaptive chat, and builds a personalized roadmap.
+                Skill Navigator conversationally assesses real proficiency on each required skill,
+                identifies gaps, and generates a personalised learning plan focused on adjacent skills 
+                the candidate can realistically acquire — with curated resources and time estimates.
               </p>
             </div>
             <UploadStep onSubmit={handleUpload} loading={loading} />
@@ -176,7 +177,7 @@ function Index() {
       </main>
 
       <footer className="mt-16 border-t border-border/40 py-6 text-center text-xs text-muted-foreground">
-        SkillScope · Honest skill mapping for ambitious careers
+        Skill Navigator · Honest skill mapping for ambitious careers
       </footer>
     </div>
   );
@@ -208,20 +209,18 @@ function Stepper({ current }: { current: Step }) {
         return (
           <div key={s.id} className="flex items-center gap-1.5">
             <div
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold transition-smooth ${
-                active
-                  ? "gradient-primary text-primary-foreground shadow-glow"
-                  : done
-                    ? "bg-success/20 text-success"
-                    : "bg-muted text-muted-foreground"
-              }`}
+              className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold transition-smooth ${active
+                ? "gradient-primary text-primary-foreground shadow-glow"
+                : done
+                  ? "bg-success/20 text-success"
+                  : "bg-muted text-muted-foreground"
+                }`}
             >
               {i + 1}
             </div>
             <span
-              className={`text-xs font-medium ${
-                active ? "text-foreground" : "text-muted-foreground"
-              }`}
+              className={`text-xs font-medium ${active ? "text-foreground" : "text-muted-foreground"
+                }`}
             >
               {s.label}
             </span>

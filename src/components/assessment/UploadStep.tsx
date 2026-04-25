@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { useServerFn } from "@tanstack/react-start";
-import { parseResume } from "@/lib/assessment.functions";
 import { toast } from "sonner";
 
 interface Props {
@@ -19,7 +17,6 @@ export function UploadStep({ onSubmit, loading }: Props) {
   const [filename, setFilename] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const parseFn = useServerFn(parseResume);
 
   async function handleFile(file: File) {
     setParsing(true);
@@ -53,14 +50,22 @@ export function UploadStep({ onSubmit, loading }: Props) {
         setResume(fullText.trim());
         setFilename(file.name);
         toast.success(`Extracted text from ${file.name}`);
-      } else {
-        // Fallback to server for other types
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await parseFn({ data: fd });
-        setResume(res.text);
+      } else if (name.endsWith(".docx")) {
+        // Load mammoth for Word files on the client
+        const mammoth = await import("mammoth");
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        
+        setResume(result.value.trim());
         setFilename(file.name);
-        toast.success(`Parsed ${file.name}`);
+        toast.success(`Extracted text from ${file.name}`);
+      } else if (name.endsWith(".txt") || file.type === "text/plain") {
+        const text = await file.text();
+        setResume(text.trim());
+        setFilename(file.name);
+        toast.success(`Extracted text from ${file.name}`);
+      } else {
+        throw new Error(`Unsupported file type: ${name}. Use PDF, DOCX, or TXT.`);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
