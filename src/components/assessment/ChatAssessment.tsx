@@ -27,6 +27,11 @@ function TypingText({ text, speed = 20 }: { text: string; speed?: number }) {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
+    setDisplayed("");
+    setIdx(0);
+  }, [text]);
+
+  useEffect(() => {
     if (idx < text.length) {
       const timeout = setTimeout(() => {
         setDisplayed((prev) => prev + text[idx]);

@@ -45,10 +45,26 @@ const KNOWN_SKILLS = [
 
 export async function localExtractSkills(text: string): Promise<string[]> {
   const upper = text.toUpperCase();
-  const found = KNOWN_SKILLS.filter(skill =>
+  let found = KNOWN_SKILLS.filter(skill =>
     upper.includes(skill.toUpperCase())
   );
-  // Deduplicate and return at least one result
+
+  // Filter out sub-matches (e.g., if "React Native" is found, remove "React" if it's just a substring)
+  found = found.filter(s => {
+    const isSubMatch = found.some(other => 
+      other !== s && other.toUpperCase().includes(s.toUpperCase())
+    );
+    if (!isSubMatch) return true;
+    
+    // If it is a submatch, check if there are occurrences that AREN'T part of the larger match
+    const largerMatches = found.filter(other => other !== s && other.toUpperCase().includes(s.toUpperCase()));
+    let textWithoutLarger = upper;
+    largerMatches.forEach(lm => {
+      textWithoutLarger = textWithoutLarger.split(lm.toUpperCase()).join(" ");
+    });
+    return textWithoutLarger.includes(s.toUpperCase());
+  });
+
   return found.length > 0 ? [...new Set(found)] : ["General Engineering"];
 }
 
@@ -122,23 +138,30 @@ export async function localVerifyAnswer(question: string, answer: string, skill:
 }
 
 export async function localNextQuestion(jd: string, analysis: InstantAnalysis, history: QAExchange[], webQuestions?: string[]) {
-  const askedSkills = history.map(h => h.skill);
-  const unverified = analysis.skills_required.filter(s => !askedSkills.includes(s));
+  const askedSkills = history.map(h => h.skill.toLowerCase());
+  const unverified = analysis.skills_required.filter(s => !askedSkills.includes(s.toLowerCase()));
   
   if (unverified.length === 0 || history.length >= 6) {
     return { done: true, question: null, skill: null, difficulty: null, reason: "Assessment complete." };
   }
 
   const skill = unverified[0];
+  const askedQuestions = history.map(h => h.question);
   
-  // Use web-searched questions if available, otherwise use LLM/Fallback
+  // 1. Try to find a unique web question if available
   let question = "";
   if (webQuestions && webQuestions.length > 0) {
-    question = webQuestions[Math.floor(Math.random() * webQuestions.length)];
+    const availableWebQs = webQuestions.filter(q => !askedQuestions.includes(q));
+    if (availableWebQs.length > 0) {
+      question = availableWebQs[0]; // Take the first unique one
+    }
   }
 
+  // 2. Fallback to templates with variety
   if (!question) {
-    question = QUESTION_TEMPLATES[Math.floor(Math.random() * QUESTION_TEMPLATES.length)].replace("{skill}", skill);
+    // Cycle through templates based on history length to ensure variety
+    const templateIdx = history.length % QUESTION_TEMPLATES.length;
+    question = QUESTION_TEMPLATES[templateIdx].replace("{skill}", skill);
   }
 
   return {
@@ -180,7 +203,7 @@ export async function localFinalReport(jd: string, resume: string, analysis: Ins
   const getResourceLinks = (skill: string) => {
     const s = skill.toLowerCase();
     const links = [
-      { title: `${skill} Documentation`, platform: "Official", link: `https://www.google.com/search?q=${encodeURIComponent(skill + " official documentation")}&btnI` },
+      { title: `${skill} Documentation`, platform: "Documentation", link: `https://www.google.com/search?q=${encodeURIComponent(skill + " official documentation")}&btnI` },
       { title: `Mastering ${skill} (2025)`, platform: "YouTube", link: `https://www.youtube.com/results?search_query=${encodeURIComponent(skill + " tutorial 2025")}` },
       { title: `${skill} Advanced Course`, platform: "Udemy", link: `https://www.udemy.com/courses/search/?q=${encodeURIComponent(skill)}` }
     ];
@@ -204,7 +227,7 @@ export async function localFinalReport(jd: string, resume: string, analysis: Ins
       estimated_time: isHighPriority ? "2-4 weeks (Intensive)" : "4-6 weeks",
       resources: getResourceLinks(skill).map(r => ({
         ...r,
-        type: (r.platform === "Official" ? "Free" : "Paid") as any
+        type: (r.platform === "Documentation" || r.platform === "YouTube" ? "Free" : "Paid") as any
       })),
       project_suggestion: `Adjacent Skill Path: Bridge your current knowledge by building a ${skill}-integrated module in an existing project.`
     };
@@ -280,10 +303,32 @@ const SKILL_POOL: Record<string, string[]> = {
   Kubernetes: [
     "Migrated 20 services to Kubernetes (EKS), reducing infrastructure costs by 30% while improving deployment reliability.",
     "Implemented HPA and custom metrics-based autoscaling, handling 10x traffic spikes during product launches.",
+    "Engineered a zero-downtime deployment pipeline using Canary releases and blue-green strategies on Kubernetes clusters.",
   ],
   "Next.js": [
     "Built a Next.js storefront with ISR achieving Core Web Vitals green scores and a 40% increase in organic search traffic.",
     "Implemented Next.js edge middleware for A/B testing and geo-based content personalisation with <5ms overhead.",
+    "Optimized Next.js bundle sizes by 45% through aggressive tree-shaking and dynamic component loading.",
+  ],
+  "Go": [
+    "Developed a high-performance concurrent data processor in Go, handling 50k events/sec with minimal memory footprint.",
+    "Built a distributed task scheduler in Go using gRPC and channels, reducing latency for background jobs by 60%.",
+    "Authored a custom Prometheus exporter in Go to monitor microservice health, surfacing critical bottlenecks in real-time.",
+  ],
+  "Java": [
+    "Optimized a legacy Spring Boot application, reducing heap memory usage by 40% and improving startup time by 25%.",
+    "Architected a multi-threaded payment gateway in Java handling $1M+ daily transactions with 99.99% reliability.",
+    "Implemented a robust caching layer using Spring Cache and Redis, cutting database load by 70% for read-heavy workloads.",
+  ],
+  "Cloud": [
+    "Lead migration of a multi-tenant SaaS platform from on-premise to AWS, resulting in a 50% reduction in TCO.",
+    "Designed a multi-region disaster recovery strategy on GCP, ensuring a RTO of <15 minutes for critical services.",
+    "Implemented Infrastructure as Code (Terraform) across 3 environments, reducing environment setup time from days to minutes.",
+  ],
+  "CI/CD": [
+    "Designed a Jenkins/GitHub Actions pipeline that cut deployment cycles from 2 hours to 15 minutes.",
+    "Integrated automated security scanning (SAST/DAST) into the CI pipeline, catching 95% of vulnerabilities pre-production.",
+    "Automated end-to-end testing in the deployment flow, reducing production rollback rates by 80%.",
   ],
 };
 
@@ -319,6 +364,15 @@ function extractJobTitle(jd: string): string {
   return titleLine ?? "Software Professional";
 }
 
+/** Returns true if a line is garbage — mostly non-alphanumeric symbols */
+function isGarbageLine(line: string): boolean {
+  const t = line.trim();
+  if (!t) return false;
+  const alphanumCount = (t.match(/[a-zA-Z0-9]/g) || []).length;
+  // Garbage if less than 20% of characters are alphanumeric
+  return alphanumCount / t.length < 0.2;
+}
+
 function extractSection(text: string, keywords: string[]): string {
   const lines = text.split("\n");
   let on = false;
@@ -328,14 +382,13 @@ function extractSection(text: string, keywords: string[]): string {
     if (keywords.some(k => t.toUpperCase().includes(k))) on = true;
     if (on) {
       if (!t && out.length > 2) break;
-      if (t) out.push(t);
+      if (t && !isGarbageLine(t)) out.push(t);
     }
   }
   return out.slice(1).join("\n");
 }
 
 export function localEnhanceResume(jd: string, resume: string, analysis: InstantAnalysis): string {
-  const HR = "─".repeat(64);
   const jobTitle = extractJobTitle(jd);
   const have = analysis.skills_identified;
   const gaps = analysis.skill_gaps;
@@ -343,7 +396,7 @@ export function localEnhanceResume(jd: string, resume: string, analysis: Instant
   const yoe = detectYearsOfExperience(resume);
   const seed = resume.slice(0, 80);
 
-  const name = resume.split("\n").map(l => l.trim()).find(l => l.length > 1 && l.length < 55) ?? "Candidate";
+  const name = resume.split("\n").map(l => l.trim()).find(l => l.length > 1 && l.length < 55) ?? "Candidate Name";
 
   const contacts = resume.split("\n").map(l => l.trim())
     .filter(l => /@/.test(l) || /\+?\d[\d\s\-]{8,}/.test(l) || /linkedin\.com|github\.com/i.test(l))
@@ -359,23 +412,21 @@ export function localEnhanceResume(jd: string, resume: string, analysis: Instant
 
   // PROFESSIONAL SUMMARY
   out.push("PROFESSIONAL SUMMARY");
-  out.push(HR);
   const expPhrase = yoe ? `${yoe}+ years of experience` : "a strong background";
   const topHave = have.slice(0, 4).join(", ") || "software engineering";
   const gapNote = gaps.length > 0 
-    ? ` Currently upskilling in ${gaps.slice(0, 2).join(" and ")} to close the remaining gap for this role.`
+    ? ` Currently upskilling in ${gaps.slice(0, 2).join(" and ")} to bridge current technical gaps for this role.`
     : " Fully aligned with the required technology stack for this position.";
   out.push(
     `${jobTitle} with ${expPhrase} in designing and delivering production-grade software. ` +
     `Core proficiencies include ${topHave}. ` +
-    `Proven track record of shipping reliable systems, collaborating across teams, and driving measurable technical improvements.` +
+    `Proven track record of shipping reliable systems, collaborating across distributed teams, and driving measurable technical improvements through data-driven decisions.` +
     gapNote
   );
   out.push("");
 
   // TECHNICAL SKILLS
   out.push("TECHNICAL SKILLS");
-  out.push(HR);
   
   const langSkills   = have.filter(s => ["JavaScript","TypeScript","Python","Java","Go","Rust","Ruby","PHP","Swift","Kotlin","C++","C#"].includes(s));
   const frontSkills  = have.filter(s => ["React","Next.js","Vue","Angular","Tailwind"].includes(s));
@@ -391,22 +442,13 @@ export function localEnhanceResume(jd: string, resume: string, analysis: Instant
   if (gaps.length)         out.push(`Actively Learning:  ${gaps.join(", ")}`);
   out.push("");
 
-  // PROFESSIONAL EXPERIENCE
-  const expText = extractSection(resume, ["EXPERIENCE", "EMPLOYMENT", "WORK HISTORY"]);
-  if (expText.length > 20) {
-    out.push("PROFESSIONAL EXPERIENCE");
-    out.push(HR);
-    out.push(expText);
-    out.push("");
-  }
-
-  // IMPACT HIGHLIGHTS
-  out.push("IMPACT HIGHLIGHTS (JD-TARGETED)");
-  out.push(HR);
-  const matchedSkills = required.filter(s => have.map(h => h.toUpperCase()).includes(s.toUpperCase())).slice(0, 5);
+  // IMPACT HIGHLIGHTS (JD-TARGETED)
+  out.push("IMPACT HIGHLIGHTS (TARGETED)");
+  const matchedSkills = required.filter(s => have.map(h => h.toUpperCase()).includes(s.toUpperCase())).slice(0, 6);
   if (matchedSkills.length === 0) {
-    out.push("• Consistently delivered projects on time while adapting quickly to new technical environments.");
-    out.push("• Collaborated with product teams to translate business requirements into engineering solutions.");
+    out.push("• Delivered high-quality code and scalable solutions, aligning technical execution with product roadmaps.");
+    out.push("• Collaborated with cross-functional stakeholders to define requirements and ship impactful features.");
+    out.push("• Mentored junior engineers and advocated for engineering best practices and clean code.");
   } else {
     matchedSkills.forEach(skill => {
       out.push(`• ${getRealisticBullet(skill, seed)}`);
@@ -414,30 +456,41 @@ export function localEnhanceResume(jd: string, resume: string, analysis: Instant
   }
   out.push("");
 
+  // PROFESSIONAL EXPERIENCE
+  const expText = extractSection(resume, ["EXPERIENCE", "EMPLOYMENT", "WORK HISTORY"]);
+  if (expText.length > 20) {
+    out.push("PROFESSIONAL EXPERIENCE");
+    // Clean up experience text slightly
+    const cleanedExp = expText.split("\n")
+      .map(l => l.trim())
+      .filter(Boolean)
+      .slice(0, 25) // Keep it concise for the enhanced version
+      .join("\n");
+    out.push(cleanedExp);
+    out.push("");
+  }
+
   // EDUCATION
   const edu = extractSection(resume, ["EDUCATION", "DEGREE", "UNIVERSITY", "COLLEGE", "B.TECH", "BACHELOR", "MASTER"]);
   if (edu.length > 5) {
     out.push("EDUCATION");
-    out.push(HR);
-    out.push(edu);
+    out.push(edu.split("\n").map(l => l.trim()).filter(Boolean).join("\n"));
     out.push("");
   }
 
   // DEVELOPMENT ROADMAP
   if (gaps.length > 0) {
-    out.push("PROFESSIONAL DEVELOPMENT ROADMAP");
-    out.push(HR);
-    out.push(`Target outcomes for currently developing skills:`);
+    out.push("UPSKILLING ROADMAP (2025)");
+    out.push(`Proactive technical growth targeting role requirements:`);
     out.push("");
     gaps.slice(0, 3).forEach((skill, i) => {
       const bullet = getRealisticBullet(skill, seed + i);
-      out.push(`  ${skill}: ${bullet}`);
+      out.push(`  [IN PROGRESS] ${skill}: ${bullet}`);
     });
     out.push("");
   }
 
-  out.push(HR);
-  out.push(`Enhanced by Skill Navigator · ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}`);
+  out.push(`Optimized for ${jobTitle} via Skill Navigator · ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}`);
 
   return out.join("\n");
 }
